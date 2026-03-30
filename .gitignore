@@ -1,0 +1,45 @@
+# ============================================================
+#  GITIGNORE — Odoo Docker Stack
+# ============================================================
+
+# Secrets — MAI committare
+odoo_pg_pass
+*.pass
+*.secret
+*.key
+*.pem
+*.env
+.env
+.env.*
+
+# Dati runtime Odoo
+odoo-web-data/
+odoo-db-data/
+
+# Addons custom (opzionale, rimuovi se vuoi versionarli)
+# addons/
+
+# Log
+*.log
+logs/
+
+# Backup
+*.sql
+*.dump
+backups/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temp
+tmp/
+temp/

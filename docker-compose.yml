@@ -1,0 +1,44 @@
+services:
+
+  # ── NEWT (tunnel → nginx-static) ──────────────────────────
+  newt-static:
+    image: fosrl/newt
+    container_name: newt-static
+    restart: always
+    networks:
+      - static_tunnel_net
+    environment:
+      - PANGOLIN_ENDPOINT=${PANGOLIN_ENDPOINT}
+      - NEWT_ID=${NEWT_ID}
+      - NEWT_SECRET=${NEWT_SECRET}
+      - NEWT_TARGET=http://nginx-static:${NGINX_PORT}
+    depends_on:
+      - nginx-static
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE_NEWT}"
+        max-file: "${LOG_MAX_FILES_NEWT}"
+
+  # ── NGINX-STATIC (file statici) ───────────────────────────
+  nginx-static:
+    image: nginx:alpine
+    container_name: nginx-static
+    restart: always
+    networks:
+      - static_tunnel_net
+    volumes:
+      - ${NGINX_CONF_PATH}:/etc/nginx/conf.d:ro
+      - ${STATIC_FILES_PATH}:/srv/static:ro
+    environment:
+      - NGINX_AUTOINDEX=${NGINX_AUTOINDEX}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE_NGINX}"
+        max-file: "${LOG_MAX_FILES_NGINX}"
+
+# ── RETE ────────────────────────────────────────────────────
+networks:
+  static_tunnel_net:
+    driver: bridge
