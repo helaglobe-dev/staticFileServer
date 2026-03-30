@@ -11,7 +11,7 @@ services:
       - PANGOLIN_ENDPOINT=${PANGOLIN_ENDPOINT}
       - NEWT_ID=${NEWT_ID}
       - NEWT_SECRET=${NEWT_SECRET}
-      - NEWT_TARGET=http://nginx-static:${NGINX_PORT}
+      - NEWT_TARGET=http://nginx-static:80
     depends_on:
       - nginx-static
     logging:
@@ -20,7 +20,27 @@ services:
         max-size: "${LOG_MAX_SIZE_NEWT}"
         max-file: "${LOG_MAX_FILES_NEWT}"
 
-  # ── NGINX-STATIC (file statici) ───────────────────────────
+  # ── NEWT (tunnel → filebrowser) ───────────────────────────
+  newt-filebrowser:
+    image: fosrl/newt
+    container_name: newt-filebrowser
+    restart: always
+    networks:
+      - filebrowser_net
+    environment:
+      - PANGOLIN_ENDPOINT=${PANGOLIN_ENDPOINT}
+      - NEWT_ID=${NEWT_ID_FILEBROWSER}
+      - NEWT_SECRET=${NEWT_SECRET_FILEBROWSER}
+      - NEWT_TARGET=http://filebrowser:80
+    depends_on:
+      - filebrowser
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE_NEWT}"
+        max-file: "${LOG_MAX_FILES_NEWT}"
+
+  # ── NGINX-STATIC (serve file statici) ─────────────────────
   nginx-static:
     image: nginx:alpine
     container_name: nginx-static
@@ -30,15 +50,32 @@ services:
     volumes:
       - ${NGINX_CONF_PATH}:/etc/nginx/conf.d:ro
       - ${STATIC_FILES_PATH}:/srv/static:ro
-    environment:
-      - NGINX_AUTOINDEX=${NGINX_AUTOINDEX}
     logging:
       driver: "json-file"
       options:
         max-size: "${LOG_MAX_SIZE_NGINX}"
         max-file: "${LOG_MAX_FILES_NGINX}"
 
-# ── RETE ────────────────────────────────────────────────────
+  # ── FILEBROWSER (upload + gestione file) ──────────────────
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: always
+    networks:
+      - filebrowser_net
+    volumes:
+      - ${STATIC_FILES_PATH}:/srv
+      - ./filebrowser/filebrowser.db:/database/filebrowser.db
+      - ./filebrowser/.filebrowser.json:/.filebrowser.json:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+# ── RETI ────────────────────────────────────────────────────
 networks:
   static_tunnel_net:
-    driver: bridge
+    driver: bridge    # newt-static ↔ nginx-static
+  filebrowser_net:
+    driver: bridge    # newt-filebrowser ↔ filebrowser
