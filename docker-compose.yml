@@ -67,6 +67,7 @@ services:
       - ${STATIC_FILES_PATH}:/srv
       - ./filebrowser/filebrowser.db:/database/filebrowser.db
       - ./filebrowser/.filebrowser.json:/.filebrowser.json:ro
+      
     logging:
       driver: "json-file"
       options:

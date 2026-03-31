@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helaglobe — Download APK</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f5f5f3;
+    color: #1a1a1a;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  header {
+    max-width: 900px;
+    margin: 0 auto 2rem;
+  }
+
+  header h1 {
+    font-size: 22px;
+    font-weight: 500;
+    color: #1a1a1a;
+  }
+
+  header p {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
+  }
+
+  .folder-section {
+    max-width: 900px;
+    margin: 0 auto 2rem;
+  }
+
+  .folder-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    padding-left: 4px;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  .card {
+    background: #fff;
+    border: 0.5px solid rgba(0,0,0,0.12);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .apk-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #e8f0fe;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .apk-icon svg { width: 20px; height: 20px; }
+
+  .card-meta { flex: 1; min-width: 0; }
+
+  .card-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-size {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+  }
+
+  .qr-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  .qr-wrapper canvas, .qr-wrapper img {
+    border-radius: 6px;
+  }
+
+  .download-btn {
+    display: block;
+    text-align: center;
+    background: #185FA5;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+
+  .download-btn:hover { background: #0C447C; }
+
+  .empty {
+    max-width: 900px;
+    margin: 4rem auto;
+    text-align: center;
+    color: #888;
+    font-size: 15px;
+  }
+
+  .error {
+    max-width: 900px;
+    margin: 2rem auto;
+    background: #fcebeb;
+    border: 0.5px solid #f09595;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    font-size: 14px;
+    color: #791F1F;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a1a; color: #e8e8e8; }
+    header h1 { color: #e8e8e8; }
+    .card { background: #2a2a2a; border-color: rgba(255,255,255,0.1); }
+    .card-name { color: #e8e8e8; }
+    .apk-icon { background: #1a3a6e; }
+    .download-btn { background: #378ADD; }
+    .download-btn:hover { background: #185FA5; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Download APK</h1>
+  <p>Scansiona il QR code o scarica direttamente il file</p>
+</header>
+
+<div id="root"></div>
+
+<script>
+const BASE_URL = "https://fileserver.helaglobe.com/APK/";
+
+function formatSize(bytes) {
+  if (!bytes || bytes === 0) return "";
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1) return mb.toFixed(1) + " MB";
+  const kb = bytes / 1024;
+  return kb.toFixed(0) + " KB";
+}
+
+function parseNginxAutoindex(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const links = doc.querySelectorAll("a[href]");
+  const items = { folders: [], files: [] };
+
+  links.forEach(a => {
+    const href = a.getAttribute("href");
+    if (!href || href.startsWith("?") || href === "../") return;
+    if (href.endsWith("/")) {
+      items.folders.push(href.replace("/", ""));
+    } else if (href.toLowerCase().endsWith(".apk")) {
+      const sizeCell = a.closest("tr") ? a.closest("tr").cells[2] : null;
+      const sizeText = sizeCell ? sizeCell.textContent.trim() : "";
+      items.files.push({ name: href, size: sizeText });
+    }
+  });
+  return items;
+}
+
+function createCard(name, url, sizeText) {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="apk-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="card-meta">
+        <div class="card-name" title="${name}">${name}</div>
+        ${sizeText ? `<div class="card-size">${sizeText}</div>` : ""}
+      </div>
+    </div>
+    <div class="qr-wrapper" id="qr-${btoa(url).replace(/[^a-z0-9]/gi, '')}"></div>
+    <a class="download-btn" href="${url}" download>Scarica APK</a>
+  `;
+
+  setTimeout(() => {
+    const qrId = "qr-" + btoa(url).replace(/[^a-z0-9]/gi, '');
+    const qrEl = card.querySelector("#" + qrId);
+    if (qrEl) {
+      new QRCode(qrEl, {
+        text: url,
+        width: 140,
+        height: 140,
+        colorDark: "#1a1a1a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+  }, 50);
+
+  return card;
+}
+
+async function loadFolder(path, label) {
+  const url = BASE_URL + (path ? path + "/" : "");
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  const html = await resp.text();
+  const { folders, files } = parseNginxAutoindex(html);
+
+  const section = document.createElement("div");
+  section.className = "folder-section";
+
+  if (label) {
+    const title = document.createElement("div");
+    title.className = "folder-title";
+    title.textContent = label;
+    section.appendChild(title);
+  }
+
+  if (files.length === 0 && folders.length === 0) return null;
+
+  const grid = document.createElement("div");
+  grid.className = "cards-grid";
+
+  files.forEach(({ name, size }) => {
+    const fileUrl = url + name;
+    grid.appendChild(createCard(name, fileUrl, size));
+  });
+
+  section.appendChild(grid);
+
+  for (const folder of folders) {
+    const subSection = await loadFolder((path ? path + "/" : "") + folder, folder);
+    if (subSection) section.appendChild(subSection);
+  }
+
+  return section;
+}
+
+async function init() {
+  const root = document.getElementById("root");
+  try {
+    const section = await loadFolder("", null);
+    if (!section || section.querySelectorAll(".card").length === 0) {
+      root.innerHTML = '<div class="empty">Nessun file APK trovato.</div>';
+    } else {
+      root.appendChild(section);
+    }
+  } catch (e) {
+    root.innerHTML = `<div class="error">Impossibile caricare i file: ${e.message}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
